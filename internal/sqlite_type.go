@@ -1,68 +1,41 @@
-package golang
+package python
 
 import (
 	"log"
 	"strings"
 
-	"github.com/sqlc-dev/sqlc/internal/codegen/golang/opts"
-	"github.com/sqlc-dev/sqlc/internal/codegen/sdk"
-	"github.com/sqlc-dev/sqlc/internal/debug"
-	"github.com/sqlc-dev/sqlc/internal/plugin"
+	"github.com/sqlc-dev/plugin-sdk-go/plugin"
+	"github.com/sqlc-dev/plugin-sdk-go/sdk"
 )
 
-func sqliteType(req *plugin.GenerateRequest, options *opts.Options, col *plugin.Column) string {
+func sqliteType(req *plugin.GenerateRequest, col *plugin.Column) string {
 	dt := strings.ToLower(sdk.DataType(col.Type))
-	notNull := col.NotNull || col.IsArray
-	emitPointersForNull := options.EmitPointersForNullTypes
+	// notNull := col.NotNull || col.IsArray
 
 	switch dt {
-
 	case "int", "integer", "tinyint", "smallint", "mediumint", "bigint", "unsignedbigint", "int2", "int8":
-		if notNull {
-			return "int64"
-		}
-		if emitPointersForNull {
-			return "*int64"
-		}
-		return "sql.NullInt64"
+		return "int"
 
 	case "blob":
-		return "[]byte"
+		return "memoryview"
 
 	case "real", "double", "doubleprecision", "float":
-		if notNull {
-			return "float64"
-		}
-		if emitPointersForNull {
-			return "*float64"
-		}
-		return "sql.NullFloat64"
+		return "float"
 
 	case "boolean", "bool":
-		if notNull {
-			return "bool"
-		}
-		if emitPointersForNull {
-			return "*bool"
-		}
-		return "sql.NullBool"
+		return "bool"
 
-	case "date", "datetime", "timestamp":
-		if notNull {
-			return "time.Time"
-		}
-		if emitPointersForNull {
-			return "*time.Time"
-		}
-		return "sql.NullTime"
+	case "date":
+		return "datetime.date"
+
+	case "datetime", "timestamp":
+		return "datetime.datetime"
 
 	case "any":
-		return "interface{}"
-
+		return "Any"
 	}
 
 	switch {
-
 	case strings.HasPrefix(dt, "character"),
 		strings.HasPrefix(dt, "varchar"),
 		strings.HasPrefix(dt, "varyingcharacter"),
@@ -71,29 +44,13 @@ func sqliteType(req *plugin.GenerateRequest, options *opts.Options, col *plugin.
 		strings.HasPrefix(dt, "nvarchar"),
 		dt == "text",
 		dt == "clob":
-		if notNull {
-			return "string"
-		}
-		if emitPointersForNull {
-			return "*string"
-		}
-		return "sql.NullString"
+		return "str"
 
 	case strings.HasPrefix(dt, "decimal"), dt == "numeric":
-		if notNull {
-			return "float64"
-		}
-		if emitPointersForNull {
-			return "*float64"
-		}
-		return "sql.NullFloat64"
+		return "float"
 
 	default:
-		if debug.Active {
-			log.Printf("unknown SQLite type: %s\n", dt)
-		}
-
-		return "interface{}"
-
+		log.Printf("unknown SQLite type: %s\n", dt)
+		return "Any"
 	}
 }
