@@ -354,15 +354,20 @@ func columnsToStruct(req *plugin.GenerateRequest, name string, columns []pyColum
 }
 
 var postgresPlaceholderRegexp = regexp.MustCompile(`\B\$(\d+)\b`)
+var sqlitePlaceholderRegexp = regexp.MustCompile(`\B\?(\d+)\b`)
 
-// Sqlalchemy uses ":name" for placeholders, so "$N" is converted to ":pN"
+// Sqlalchemy uses ":name" for placeholders, so "$N" for PostgreSQL and "?N" for SQLite are converted to ":pN"
 // This also means ":" has special meaning to sqlalchemy, so it must be escaped.
 func sqlalchemySQL(s, engine string) string {
 	s = strings.ReplaceAll(s, ":", `\\:`)
-	if engine == "postgresql" {
+	switch engine {
+	case "postgresql":
 		return postgresPlaceholderRegexp.ReplaceAllString(s, ":p$1")
+	case "sqlite":
+		return sqlitePlaceholderRegexp.ReplaceAllString(s, ":p$1")
+	default:
+		return s
 	}
-	return s
 }
 
 func buildQueries(conf Config, req *plugin.GenerateRequest, structs []Struct) ([]Query, error) {
